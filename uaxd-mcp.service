@@ -1,0 +1,20 @@
+[Unit]
+Description=UAXD MCP HTTP Server
+After=network.target
+
+[Service]
+Type=simple
+User=ailabuser
+WorkingDirectory=/home/ailabuser/uaxd-mcp
+Environment="JAVA_HOME=/home/ailabuser/.sdkman/candidates/java/current"
+Environment="MCP_API_KEY=your-secure-api-key-here"
+ExecStart=/home/ailabuser/.sdkman/candidates/java/current/bin/java \
+    --enable-preview \
+    -Xms256m -Xmx512m \
+    -jar /home/ailabuser/uaxd-mcp/target/uaxd-mcp.jar \
+    --http --port=8478
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
