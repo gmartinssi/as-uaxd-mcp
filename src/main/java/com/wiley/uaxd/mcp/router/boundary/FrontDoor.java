@@ -59,24 +59,34 @@ public class FrontDoor {
         try {
             Map<String, Object> json = JsonParser.parseObject(line);
             if (json.isEmpty()) {
-                sender.sendParseError(null);
+                // Can't parse - log error but don't respond (no valid id)
+                Log.error("Failed to parse JSON request");
                 return;
             }
 
             // Validate JSON-RPC format
             String jsonrpc = (String) json.get("jsonrpc");
+            Object id = json.get("id");
+
             if (!"2.0".equals(jsonrpc)) {
-                sender.sendInvalidRequest(json.get("id"));
+                if (isValidId(id)) {
+                    sender.sendInvalidRequest(id);
+                } else {
+                    Log.error("Invalid JSON-RPC version and no valid id");
+                }
                 return;
             }
 
             String method = (String) json.get("method");
             if (method == null || method.isBlank()) {
-                sender.sendInvalidRequest(json.get("id"));
+                if (isValidId(id)) {
+                    sender.sendInvalidRequest(id);
+                } else {
+                    Log.error("Missing method and no valid id");
+                }
                 return;
             }
 
-            Object id = json.get("id");
             @SuppressWarnings("unchecked")
             Map<String, Object> params = (Map<String, Object>) json.get("params");
 
@@ -85,11 +95,18 @@ public class FrontDoor {
 
         } catch (Exception e) {
             Log.error("Error processing request", e);
-            sender.sendInternalError(null, e.getMessage());
+            // Don't respond if we don't have a valid request id
         }
     }
 
+    private boolean isValidId(Object id) {
+        return id != null && (id instanceof String || id instanceof Number);
+    }
+
     private void dispatchRequest(MCPRequest request) {
+        // Check if this is a notification (no id means no response expected)
+        boolean isNotification = !isValidId(request.id());
+
         for (RequestHandler handler : handlers) {
             try {
                 if (handler.handleRequest(request)) {
@@ -97,12 +114,18 @@ public class FrontDoor {
                 }
             } catch (Exception e) {
                 Log.error("Handler error: " + handler.getClass().getSimpleName(), e);
-                sender.sendInternalError(request.id(), e.getMessage());
+                if (!isNotification) {
+                    sender.sendInternalError(request.id(), e.getMessage());
+                }
                 return;
             }
         }
 
-        // No handler found
-        sender.sendMethodNotFound(request.id(), request.method());
+        // No handler found - only respond if not a notification
+        if (!isNotification) {
+            sender.sendMethodNotFound(request.id(), request.method());
+        } else {
+            Log.error("No handler found for notification: " + request.method());
+        }
     }
 }
