@@ -1,5 +1,8 @@
 # AS-UAXD MCP Server
 
+[![CI](https://github.com/gmartinssi/as-uaxd-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/gmartinssi/as-uaxd-mcp/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/gmartinssi/as-uaxd-mcp)](https://github.com/gmartinssi/as-uaxd-mcp/releases/latest)
+
 A Model Context Protocol (MCP) server for accessing UAXD (Unified Author Experience Dashboard) articles and related services. Built with Java 25 and virtual threads for high-performance concurrent request handling.
 
 ## Features
@@ -353,6 +356,44 @@ curl -X POST https://ailab.eastus2.cloudapp.azure.com/mcp \
     }
   }'
 ```
+
+## Troubleshooting
+
+### Windows Installation Issues
+
+**"JSON parsing error" after installation:**
+
+The config file may be corrupted. Fix it by:
+
+```powershell
+# Restore backup config
+Copy-Item "$env:APPDATA\Claude\claude_desktop_config.json.backup" "$env:APPDATA\Claude\claude_desktop_config.json" -Force
+
+# Re-run installer
+irm https://raw.githubusercontent.com/gmartinssi/as-uaxd-mcp/main/install.ps1 | iex
+```
+
+**Clean reinstall:**
+
+```powershell
+# Remove installation
+Remove-Item "$env:LOCALAPPDATA\Programs\as-uaxd-mcp" -Recurse -Force
+
+# Remove config entry (or restore backup)
+Copy-Item "$env:APPDATA\Claude\claude_desktop_config.json.backup" "$env:APPDATA\Claude\claude_desktop_config.json" -Force
+
+# Reinstall
+irm https://raw.githubusercontent.com/gmartinssi/as-uaxd-mcp/main/install.ps1 | iex
+```
+
+### VPN-Dependent Tools
+
+`GetUAXDArticles` and `GetASArticles` require VPN connection to internal Wiley services. If you see connection errors for these tools, ensure VPN is connected. `GetRexArticles` works without VPN.
+
+### Logs
+
+- **Windows**: `%USERPROFILE%\uaxd-mcp.log`
+- **Linux/macOS**: `~/uaxd-mcp.log`
 
 ## License
 
