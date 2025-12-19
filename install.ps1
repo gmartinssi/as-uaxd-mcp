@@ -30,7 +30,7 @@ $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'Continue'
 
 # Configuration
-$RepoOwner = "wiley"
+$RepoOwner = "gmartinssi"
 $RepoName = "as-uaxd-mcp"
 $InstallDir = Join-Path $env:LOCALAPPDATA "Programs\as-uaxd-mcp"
 $ClaudeConfigPath = Join-Path $env:APPDATA "Claude\claude_desktop_config.json"
