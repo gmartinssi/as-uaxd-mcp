@@ -167,6 +167,66 @@ function Install-Bundle {
     return $launcherPath
 }
 
+# Format JSON with clean 2-space indentation (like original Claude Desktop config)
+function Format-CleanJson {
+    param($Object, $Indent = 0)
+
+    $space = "  " * $Indent
+    $nextSpace = "  " * ($Indent + 1)
+
+    if ($null -eq $Object) {
+        return "null"
+    }
+    elseif ($Object -is [bool]) {
+        return $Object.ToString().ToLower()
+    }
+    elseif ($Object -is [string]) {
+        # Escape special characters
+        $escaped = $Object.Replace('\', '\\').Replace('"', '\"').Replace("`n", '\n').Replace("`r", '\r').Replace("`t", '\t')
+        return "`"$escaped`""
+    }
+    elseif ($Object -is [int] -or $Object -is [long] -or $Object -is [double]) {
+        return $Object.ToString()
+    }
+    elseif ($Object -is [array]) {
+        if ($Object.Count -eq 0) {
+            return "[]"
+        }
+        # Check if array contains only simple values (strings/numbers)
+        $allSimple = $true
+        foreach ($item in $Object) {
+            if ($item -is [PSCustomObject] -or $item -is [hashtable] -or $item -is [array]) {
+                $allSimple = $false
+                break
+            }
+        }
+        if ($allSimple -and $Object.Count -le 5) {
+            # Compact format for simple arrays
+            $items = $Object | ForEach-Object { Format-CleanJson $_ 0 }
+            return "[" + ($items -join ", ") + "]"
+        }
+        # Multi-line format for complex arrays
+        $items = $Object | ForEach-Object { "$nextSpace$(Format-CleanJson $_ ($Indent + 1))" }
+        return "[$([Environment]::NewLine)$($items -join ",$([Environment]::NewLine)")$([Environment]::NewLine)$space]"
+    }
+    elseif ($Object -is [PSCustomObject] -or $Object -is [hashtable]) {
+        $props = if ($Object -is [hashtable]) { $Object.GetEnumerator() } else { $Object.PSObject.Properties }
+        $propList = @($props)
+        if ($propList.Count -eq 0) {
+            return "{}"
+        }
+        $items = foreach ($prop in $propList) {
+            $name = if ($Object -is [hashtable]) { $prop.Key } else { $prop.Name }
+            $value = if ($Object -is [hashtable]) { $prop.Value } else { $prop.Value }
+            "$nextSpace`"$name`": $(Format-CleanJson $value ($Indent + 1))"
+        }
+        return "{$([Environment]::NewLine)$($items -join ",$([Environment]::NewLine)")$([Environment]::NewLine)$space}"
+    }
+    else {
+        return "`"$($Object.ToString())`""
+    }
+}
+
 # Configure Claude Desktop
 function Set-ClaudeDesktopConfig {
     param($LauncherPath)
@@ -225,8 +285,8 @@ function Set-ClaudeDesktopConfig {
     }
     $config.mcpServers | Add-Member -NotePropertyName 'uaxd' -NotePropertyValue $uaxdConfig -Force
 
-    # Write config as UTF8 without BOM (critical for JSON compatibility)
-    $configJson = $config | ConvertTo-Json -Depth 10
+    # Write config as clean JSON with UTF8 without BOM
+    $configJson = Format-CleanJson $config
     $utf8NoBom = New-Object System.Text.UTF8Encoding $false
     [System.IO.File]::WriteAllText($ClaudeConfigPath, $configJson, $utf8NoBom)
 
