@@ -36,7 +36,8 @@ jobs:
       - name: Build
         run: |
           echo "Building AS-UAXD MCP Server..."
-          mvn clean package -q
+          chmod +x ./mvnw
+          ./mvnw clean package -q
           echo "Build completed"
 
       - name: Start MCP Server (HTTP mode)
