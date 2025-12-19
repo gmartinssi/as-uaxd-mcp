@@ -178,8 +178,8 @@ function Set-ClaudeDesktopConfig {
     # Check if Claude Desktop is installed
     if (-not (Test-Path $claudeDir)) {
         Write-Host "  ⚠ Claude Desktop config directory not found" -ForegroundColor Yellow
-        Write-Host "  ⚠ You may need to configure manually after installing Claude Desktop" -ForegroundColor Yellow
-        return
+        Write-Host "  Creating config directory..." -ForegroundColor Yellow
+        New-Item -ItemType Directory -Path $claudeDir -Force | Out-Null
     }
 
     # Backup existing config
@@ -189,30 +189,46 @@ function Set-ClaudeDesktopConfig {
         Write-Host "  ✓ Backed up existing config to $backupPath" -ForegroundColor Green
     }
 
-    # Read or create config
-    $config = @{ mcpServers = @{} }
+    # Read existing config or create new one
+    $config = $null
     if (Test-Path $ClaudeConfigPath) {
         try {
-            $existingConfig = Get-Content $ClaudeConfigPath -Raw | ConvertFrom-Json -AsHashtable
-            if ($existingConfig.mcpServers) {
-                $config.mcpServers = $existingConfig.mcpServers
+            $rawContent = Get-Content $ClaudeConfigPath -Raw -ErrorAction Stop
+            if ($rawContent -and $rawContent.Trim()) {
+                $config = $rawContent | ConvertFrom-Json -ErrorAction Stop
             }
         }
         catch {
             Write-Host "  ⚠ Could not parse existing config, creating new one" -ForegroundColor Yellow
+            $config = $null
         }
     }
 
-    # Add UAXD MCP server - escape backslashes for JSON
-    $escapedPath = $LauncherPath.Replace('\', '\\')
-    $config.mcpServers["uaxd"] = @{
+    # Initialize config structure if needed
+    if (-not $config) {
+        $config = [PSCustomObject]@{ mcpServers = [PSCustomObject]@{} }
+    }
+    if (-not $config.mcpServers) {
+        $config | Add-Member -NotePropertyName 'mcpServers' -NotePropertyValue ([PSCustomObject]@{}) -Force
+    }
+
+    # Remove existing uaxd entry if present (clean reinstall)
+    if ($config.mcpServers.PSObject.Properties['uaxd']) {
+        $config.mcpServers.PSObject.Properties.Remove('uaxd')
+        Write-Host "  ✓ Removed previous uaxd configuration" -ForegroundColor Green
+    }
+
+    # Add UAXD MCP server
+    $uaxdConfig = [PSCustomObject]@{
         command = $LauncherPath
         args = @()
     }
+    $config.mcpServers | Add-Member -NotePropertyName 'uaxd' -NotePropertyValue $uaxdConfig -Force
 
-    # Write config
+    # Write config as UTF8 without BOM (critical for JSON compatibility)
     $configJson = $config | ConvertTo-Json -Depth 10
-    Set-Content -Path $ClaudeConfigPath -Value $configJson -Encoding UTF8
+    $utf8NoBom = New-Object System.Text.UTF8Encoding $false
+    [System.IO.File]::WriteAllText($ClaudeConfigPath, $configJson, $utf8NoBom)
 
     Write-Host "  ✓ Claude Desktop configured" -ForegroundColor Green
 }
