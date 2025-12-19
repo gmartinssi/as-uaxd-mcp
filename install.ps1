@@ -218,6 +218,10 @@ function Format-CleanJson {
         $items = foreach ($prop in $propList) {
             $name = if ($Object -is [hashtable]) { $prop.Key } else { $prop.Name }
             $value = if ($Object -is [hashtable]) { $prop.Value } else { $prop.Value }
+            # Handle PowerShell empty array -> null quirk for known array properties
+            if ($null -eq $value -and $name -eq "args") {
+                $value = @()
+            }
             "$nextSpace`"$name`": $(Format-CleanJson $value ($Indent + 1))"
         }
         return "{$([Environment]::NewLine)$($items -join ",$([Environment]::NewLine)")$([Environment]::NewLine)$space}"
@@ -279,10 +283,10 @@ function Set-ClaudeDesktopConfig {
     }
 
     # Add UAXD MCP server
-    $uaxdConfig = [PSCustomObject]@{
-        command = $LauncherPath
-        args = @()
-    }
+    # Build JSON manually to avoid PowerShell empty array -> null quirk
+    $escapedCommand = $LauncherPath.Replace('\', '\\').Replace('"', '\"')
+    $uaxdJson = "{`"command`": `"$escapedCommand`", `"args`": []}"
+    $uaxdConfig = $uaxdJson | ConvertFrom-Json
     $config.mcpServers | Add-Member -NotePropertyName 'uaxd' -NotePropertyValue $uaxdConfig -Force
 
     # Write config as clean JSON with UTF8 without BOM
