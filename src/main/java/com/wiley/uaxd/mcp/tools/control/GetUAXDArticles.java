@@ -16,18 +16,7 @@ public class GetUAXDArticles implements Function<Map<String, Object>, Map<String
     public static final Map<String, String> TOOL_SPEC = Map.of(
         "name", "GetUAXDArticles",
         "description", "Retrieves UAXD dashboard articles for a given user ID. Returns a list of articles associated with the user's UAXD dashboard.",
-        "inputSchema", """
-            {
-                "type": "object",
-                "properties": {
-                    "userId": {
-                        "type": "string",
-                        "description": "The user ID (UUID) to retrieve articles for"
-                    }
-                },
-                "required": ["userId"]
-            }
-            """
+        "inputSchema", "{\"type\":\"object\",\"properties\":{\"userId\":{\"type\":\"string\",\"description\":\"The user ID (UUID) to retrieve articles for\"}},\"required\":[\"userId\"]}"
     );
 
     private static final String API_URL =

@@ -16,18 +16,7 @@ public class GetASArticles implements Function<Map<String, Object>, Map<String, 
     public static final Map<String, String> TOOL_SPEC = Map.of(
         "name", "GetASArticles",
         "description", "Retrieves Author Services (AS) articles for a given user ID. Returns article cards from the AS platform.",
-        "inputSchema", """
-            {
-                "type": "object",
-                "properties": {
-                    "userId": {
-                        "type": "string",
-                        "description": "The user ID (UUID) to retrieve articles for"
-                    }
-                },
-                "required": ["userId"]
-            }
-            """
+        "inputSchema", "{\"type\":\"object\",\"properties\":{\"userId\":{\"type\":\"string\",\"description\":\"The user ID (UUID) to retrieve articles for\"}},\"required\":[\"userId\"]}"
     );
 
     private static final String TENANT_ID = "0636030c-5229-481c-a745-230521c60957";

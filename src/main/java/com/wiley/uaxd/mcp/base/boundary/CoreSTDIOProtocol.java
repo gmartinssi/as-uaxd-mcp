@@ -58,15 +58,10 @@ public class CoreSTDIOProtocol implements RequestHandler {
         }
         capabilities.append("}");
 
-        String result = String.format("""
-            {
-                "protocolVersion": "%s",
-                "capabilities": %s,
-                "serverInfo": {
-                    "name": "%s",
-                    "version": "%s"
-                }
-            }""", PROTOCOL_VERSION, capabilities, SERVER_NAME, SERVER_VERSION);
+        // Single-line JSON for MCP protocol compliance
+        String result = String.format(
+            "{\"protocolVersion\":\"%s\",\"capabilities\":%s,\"serverInfo\":{\"name\":\"%s\",\"version\":\"%s\"}}",
+            PROTOCOL_VERSION, capabilities, SERVER_NAME, SERVER_VERSION);
 
         sender.sendSuccess(request.id(), result);
         return true;

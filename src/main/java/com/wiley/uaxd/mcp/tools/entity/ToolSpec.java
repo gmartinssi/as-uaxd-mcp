@@ -7,8 +7,8 @@ import java.util.Map;
  */
 public record ToolSpec(String name, String description, String inputSchema) {
 
-    public static final String DEFAULT_SCHEMA = """
-        {"type":"object","properties":{"input":{"type":"string"}},"required":["input"]}""";
+    public static final String DEFAULT_SCHEMA =
+        "{\"type\":\"object\",\"properties\":{\"input\":{\"type\":\"string\"}},\"required\":[\"input\"]}";
 
     public static ToolSpec of(String name, String description, String inputSchema) {
         return new ToolSpec(name, description, inputSchema != null ? inputSchema : DEFAULT_SCHEMA);
@@ -23,8 +23,7 @@ public record ToolSpec(String name, String description, String inputSchema) {
     }
 
     public String toJson() {
-        return String.format("""
-            {"name":"%s","description":"%s","inputSchema":%s}""",
+        return String.format("{\"name\":\"%s\",\"description\":\"%s\",\"inputSchema\":%s}",
             escapeJson(name), escapeJson(description), inputSchema);
     }
 
