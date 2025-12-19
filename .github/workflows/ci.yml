@@ -1,0 +1,144 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    runs-on: hephaestus-small
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 25
+        uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: 'maven'
+          cache-dependency-path: '**/pom.xml'
+
+      - name: Cache Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Build
+        run: |
+          echo "Building AS-UAXD MCP Server..."
+          mvn clean package -q
+          echo "Build completed"
+
+      - name: Start MCP Server (HTTP mode)
+        run: |
+          echo "Starting MCP server in HTTP mode..."
+          java --enable-preview -jar target/uaxd-mcp.jar --http --port=8478 &
+          sleep 5
+          echo "Server started"
+
+      - name: Test Health Endpoint
+        run: |
+          echo "Testing health endpoint..."
+          response=$(curl -s http://localhost:8478/mcp/health)
+          echo "$response" | jq .
+          if echo "$response" | jq -e '.status == "healthy"' > /dev/null; then
+            echo "Health check passed"
+          else
+            echo "Health check failed"
+            exit 1
+          fi
+
+      - name: Test MCP Initialize
+        run: |
+          echo "Testing MCP initialize..."
+          response=$(curl -s -X POST http://localhost:8478/mcp \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"ci-test","version":"1.0"}}}')
+          echo "$response" | jq .
+          if echo "$response" | jq -e '.result.serverInfo.name == "uaxd-mcp"' > /dev/null; then
+            echo "Initialize passed"
+          else
+            echo "Initialize failed"
+            exit 1
+          fi
+
+      - name: Test Tools List
+        run: |
+          echo "Testing tools/list..."
+          response=$(curl -s -X POST http://localhost:8478/mcp \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","id":2,"method":"tools/list"}')
+          echo "$response" | jq .
+          tool_count=$(echo "$response" | jq '.result.tools | length')
+          if [ "$tool_count" -eq 3 ]; then
+            echo "Tools list passed - found $tool_count tools"
+          else
+            echo "Tools list failed - expected 3 tools, found $tool_count"
+            exit 1
+          fi
+
+      - name: Test GetRexArticles Tool
+        run: |
+          echo "Testing GetRexArticles tool..."
+          response=$(curl -s -X POST http://localhost:8478/mcp \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"GetRexArticles","arguments":{"userId":"00000000-0000-0000-0000-000000000001"}}}')
+          echo "$response" | jq .
+          if echo "$response" | jq -e '.result.content' > /dev/null; then
+            echo "GetRexArticles test passed"
+          else
+            echo "GetRexArticles test failed"
+            exit 1
+          fi
+
+      - name: Test GetUAXDArticles Tool (VPN)
+        run: |
+          echo "Testing GetUAXDArticles tool (requires VPN)..."
+          response=$(curl -s -X POST http://localhost:8478/mcp \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"GetUAXDArticles","arguments":{"userId":"00000000-0000-0000-0000-000000000001"}}}')
+          echo "$response" | jq .
+          if echo "$response" | jq -e '.result.content' > /dev/null; then
+            echo "GetUAXDArticles test passed"
+          else
+            echo "GetUAXDArticles test failed"
+            exit 1
+          fi
+
+      - name: Test GetASArticles Tool (VPN)
+        run: |
+          echo "Testing GetASArticles tool (requires VPN)..."
+          response=$(curl -s -X POST http://localhost:8478/mcp \
+            -H "Content-Type: application/json" \
+            -d '{"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"GetASArticles","arguments":{"userId":"00000000-0000-0000-0000-000000000001"}}}')
+          echo "$response" | jq .
+          if echo "$response" | jq -e '.result.content' > /dev/null; then
+            echo "GetASArticles test passed"
+          else
+            echo "GetASArticles test failed"
+            exit 1
+          fi
+
+      - name: Check Service Status
+        run: |
+          echo "Checking service status..."
+          curl -s http://localhost:8478/mcp/status | jq .
+
+      - name: Stop Server
+        if: always()
+        run: |
+          pkill -f "uaxd-mcp.jar" || true
+          echo "Server stopped"
+
+      - name: Success
+        run: echo "All tests passed!"
