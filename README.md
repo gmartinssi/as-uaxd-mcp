@@ -48,24 +48,51 @@ A Model Context Protocol (MCP) server for accessing UAXD (Unified Author Experie
 
 ## Quick Start
 
-### Prerequisites
+### Windows Installation (Claude Desktop)
+
+**One-liner install (no admin required):**
+
+```powershell
+irm https://raw.githubusercontent.com/gmartinssi/as-uaxd-mcp/main/install.ps1 | iex
+```
+
+Or with execution policy bypass:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/gmartinssi/as-uaxd-mcp/main/install.ps1 | iex"
+```
+
+**What it does:**
+1. Downloads bundled package (~50MB) with Java 25 runtime included
+2. Extracts to `%LOCALAPPDATA%\Programs\as-uaxd-mcp`
+3. Configures Claude Desktop automatically
+4. No admin permissions required
+
+**After installation:**
+1. Restart Claude Desktop completely (quit from system tray)
+2. Look for the hammer icon (🔨) in the chat input
+3. Click it to see available UAXD tools
+
+### Linux/macOS Installation
+
+**Prerequisites:**
 
 - Java 25 (install via SDKMAN: `sdk install java 25-open`)
 - Maven 3.9+ (install via SDKMAN: `sdk install maven`)
 
-### Build
+**Build:**
 
 ```bash
 mvn clean package
 ```
 
-### Run (STDIO Mode)
+**Run (STDIO Mode):**
 
 ```bash
 ./uaxd-mcp.sh
 ```
 
-### Run (HTTP Mode)
+**Run (HTTP Mode):**
 
 ```bash
 java --enable-preview -jar target/uaxd-mcp.jar --http --port=8478
